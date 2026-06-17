@@ -38,7 +38,7 @@ are markdown at the repo root, and the analyzer never sends audio anywhere.
 | Language | Fluency metrics | Pronunciation feedback |
 |---|---|---|
 | **English** | ✅ words | ✅ th, w/v, ŋ, æ, final-devoicing (assumes a German L1) |
-| **Japanese** | ✅ morae | ✅ 長音 long vowels, ら行 flap, ふ /ɸ/, 促音 geminate, pitch/prosody |
+| **Japanese** | ✅ morae | ✅ 長音 long vowels, ら行 flap, ふ /ɸ/, 促音 geminate, **pitch-accent** (vs. UniDic) |
 | **Any other** (`generic`) | ✅ whitespace words | — fluency only |
 
 **Fluency works for every language** — the audio metrics (pauses, phonation,
@@ -106,7 +106,7 @@ scripts/analyze.sh --ids 121,122,123   # specific takes
 | `fluency.py` | units (words/morae), fillers, duration, **phonation ratio**, **speech rate**, pause count/length, **mean length of run** — plus a flow-trend table across takes. Works for any language. |
 | `probe.py` | disfluency typing, **prosody** (pitch range / monotone via Praat), raw phone recognition. *English module* (prosody is language-neutral and a candidate to generalize). |
 | `pron_align.py` | expected (CMUdict) vs. actual (Allosaurus) phones aligned → **L1-transfer flags**. *English-from-German module.* |
-| `pron_align_ja.py` | expected (kana→IPA) vs. actual (Allosaurus) phones aligned → **Japanese tells**: long vowels, ら-row flap, ふ, geminates, prosody. |
+| `pron_align_ja.py` | expected (fugashi+UniDic → kana→IPA) vs. actual (Allosaurus, timestamped) → **Japanese tells**: long vowels, ら-row flap, ふ, geminates, and **pitch-accent** (UniDic downstep vs. the measured contour, mapped to morae by the timestamps). |
 | `analyze.sh` | the standing per-session command — runs fluency for your language, plus the matching pronunciation module (English or Japanese). |
 
 ### Adding a language or pronunciation module

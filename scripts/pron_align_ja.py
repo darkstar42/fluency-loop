@@ -3,28 +3,31 @@
 pron_align_ja.py — Japanese pronunciation feedback, fully offline.
 
 The Japanese sibling of pron_align.py. Same shape (expected vs. actual phones,
-aligned, then flagged), but built for Japanese:
+aligned, then flagged), built for Japanese:
 
-  1. EXPECTED phones  — the transcript's kana reading (pykakasi) → IPA via a
-     rule-based table. Japanese orthography→sound is very regular, so this is
-     more reliable than the English CMUdict path.
-  2. ACTUAL phones    — from the .wav via Allosaurus, constrained to Japanese.
+  1. EXPECTED phones  — the transcript tokenized with fugashi + UniDic, each
+     token's pronunciation reading → IPA via a rule-based table. UniDic also
+     gives each word's ACCENT TYPE (downstep position), used below.
+  2. ACTUAL phones    — from the .wav via Allosaurus (Japanese), WITH timestamps.
   3. ALIGN            — Needleman-Wunsch on a Japanese-tuned phone inventory.
   4. FLAG             — the learner tells that matter for Japanese:
         • 長音   long vowels shortened (おばあさん→おばさん)
         • ら行   flap /ɾ/ realized as English/German l or ɹ
         • ふ     /ɸ/ realized as labiodental f
         • 促音   geminate っ dropped
-     plus prosody (pitch range / monotone). True pitch-ACCENT correctness needs
-     an accent dictionary and is out of scope — we report the contour, not a grade.
+        • アクセント  pitch-accent: the dictionary downstep position vs. where the
+                 pitch actually dropped (timestamps map the pitch contour to morae)
+     plus an overall pitch-range / monotone read.
 
-DIRECTIONAL, not clinical: Allosaurus is imperfect — read rates/trends, not single
-hits. Pronunciation is a secondary track behind fluency for most learners.
+DIRECTIONAL, not clinical: Allosaurus is imperfect and connected-speech accent has
+phrasing effects, so read rates/trends, not single hits. The accent dictionary is
+UniDic (free, via the `unidic-lite` package) — downloaded with the deps into the
+venv, never committed.
 
   scripts/.venv/bin/python scripts/pron_align_ja.py --ids 793
   scripts/.venv/bin/python scripts/pron_align_ja.py --since 800 --json
 """
-import argparse, json, os, re, sqlite3, sys, unicodedata
+import argparse, json, math, os, re, sqlite3, sys, unicodedata
 
 import lang as L
 
@@ -35,9 +38,9 @@ RECDIR = os.path.join(HANDY, "recordings")
 VOWELS = set("aiueo")
 
 # ── kana → normalized Japanese phones ──────────────────────────────────────
-# Working inventory: k g s z ʃ ʒ t d ts tʃ dʒ n h ɸ b p m j r w  N(moraic ん)
-# Q(geminate っ)  +  vowels a i u e o.  ら-row → 'r'; ふ → 'ɸ' (kept distinct
-# from 'f' so a labiodental substitution shows up).
+# Working inventory: k g s z ʃ ʒ t d ts tʃ dʒ n h ɸ b p m j r w  N(ん)  Q(っ)
+# + vowels a i u e o.  ら-row → 'r'; ふ → 'ɸ' (distinct from 'f' so a labiodental
+# substitution surfaces).
 KANA = {
     "あ": ["a"], "い": ["i"], "う": ["u"], "え": ["e"], "お": ["o"],
     "か": ["k", "a"], "き": ["k", "i"], "く": ["k", "u"], "け": ["k", "e"], "こ": ["k", "o"],
@@ -56,7 +59,7 @@ KANA = {
     "わ": ["w", "a"], "ゐ": ["w", "i"], "ゑ": ["w", "e"], "を": ["o"],
     "ぁ": ["a"], "ぃ": ["i"], "ぅ": ["u"], "ぇ": ["e"], "ぉ": ["o"],
 }
-YOON = {  # consonant + small ゃゅょ (palatalization dropped — it's stripped on both sides)
+YOON = {
     "きゃ": ["k", "a"], "きゅ": ["k", "u"], "きょ": ["k", "o"],
     "ぎゃ": ["g", "a"], "ぎゅ": ["g", "u"], "ぎょ": ["g", "o"],
     "しゃ": ["ʃ", "a"], "しゅ": ["ʃ", "u"], "しょ": ["ʃ", "o"],
@@ -71,55 +74,104 @@ YOON = {  # consonant + small ゃゅょ (palatalization dropped — it's strippe
 }
 
 
-def to_hira(text):
-    import pykakasi
-    return "".join(i["hira"] for i in pykakasi.kakasi().convert(text))
+def kata_to_hira(s):
+    out = []
+    for c in s:
+        o = ord(c)
+        out.append(chr(o - 0x60) if 0x30A1 <= o <= 0x30F6 else c)
+    return "".join(out)
 
 
-def expected_phones(text):
-    """kana reading → list of {p, mora, vowel, role}. role ∈ rrow|fu|geminate|long2|''."""
-    try:
-        hira = to_hira(text)
-    except Exception:
-        return None
-    raw = []  # (phone, source-kana)
-    i = 0
+def kana_to_phones(hira):
+    """hiragana reading → [(phone, source-kana)]."""
+    out, i = [], 0
     while i < len(hira):
         c = hira[i]
         pair = hira[i:i + 2]
         if len(pair) == 2 and pair in YOON:
             for p in YOON[pair]:
-                raw.append((p, pair))
+                out.append((p, pair))
             i += 2
         elif c == "っ":
-            raw.append(("Q", c)); i += 1
+            out.append(("Q", c)); i += 1
         elif c == "ー":
-            if raw and raw[-1][0] in VOWELS:
-                raw.append((raw[-1][0], c))     # lengthen previous vowel
+            if out and out[-1][0] in VOWELS:
+                out.append((out[-1][0], c))
             i += 1
         elif c == "ん":
-            raw.append(("N", c)); i += 1
+            out.append(("N", c)); i += 1
         elif c in KANA:
             for p in KANA[c]:
-                raw.append((p, c))
+                out.append((p, c))
             i += 1
         else:
-            i += 1  # punctuation, latin, spaces — skip
+            i += 1
+    return out
 
-    seq = []
-    for idx, (p, mora) in enumerate(raw):
-        vowel = p in VOWELS
-        role = ""
+
+def split_morae(hira):
+    """Hiragana → accent morae (small ゃゅょ fuse; ん っ ー each count as one mora)."""
+    morae, i, small = [], 0, set("ゃゅょ")
+    while i < len(hira):
+        if i + 1 < len(hira) and hira[i + 1] in small:
+            morae.append(hira[i:i + 2]); i += 2
+        else:
+            morae.append(hira[i]); i += 1
+    return morae
+
+
+_TAGGER = None
+
+
+def get_tagger():
+    global _TAGGER
+    if _TAGGER is None:
+        try:
+            import fugashi
+            _TAGGER = fugashi.Tagger()
+        except Exception:
+            _TAGGER = False
+    return _TAGGER or None
+
+
+def build_expected(text):
+    """Tokenize with fugashi → (exp phones with word index + role, per-word accent meta).
+    Falls back to pykakasi (no word index / accent) if fugashi is unavailable."""
+    tagger = get_tagger()
+    exp, meta = [], []
+    if tagger is None:
+        try:
+            import pykakasi
+            hira = "".join(i["hira"] for i in pykakasi.kakasi().convert(text))
+        except Exception:
+            return None, None
+        for p, mora in kana_to_phones(hira):
+            exp.append({"p": p, "mora": mora, "vowel": p in VOWELS, "role": "", "word": 0})
+        meta = None
+    else:
+        for wi, tok in enumerate(tagger(text)):
+            f = tok.feature
+            reading = getattr(f, "pron", None) or getattr(f, "kana", None)
+            hira = kata_to_hira(reading) if reading else ""
+            for p, mora in kana_to_phones(hira):
+                exp.append({"p": p, "mora": mora, "vowel": p in VOWELS, "role": "", "word": wi})
+            at = getattr(f, "aType", None)
+            m = re.match(r"\d+", str(at)) if at not in (None, "*", "") else None
+            morae = split_morae(hira)
+            meta.append({"surface": tok.surface, "n": len(morae),
+                         "downstep": int(m.group()) if m else None})
+
+    for idx, e in enumerate(exp):
+        p = e["p"]
         if p == "Q":
-            role = "geminate"
+            e["role"] = "geminate"
         elif p == "ɸ":
-            role = "fu"
+            e["role"] = "fu"
         elif p == "r":
-            role = "rrow"
-        elif vowel and seq and seq[-1]["vowel"] and seq[-1]["p"] == p:
-            role = "long2"                       # second half of a long vowel
-        seq.append({"p": p, "mora": mora, "vowel": vowel, "role": role})
-    return seq
+            e["role"] = "rrow"
+        elif e["vowel"] and idx > 0 and exp[idx - 1]["vowel"] and exp[idx - 1]["p"] == p:
+            e["role"] = "long2"
+    return exp, meta
 
 
 # ── normalize Allosaurus output into the same inventory ────────────────────
@@ -135,8 +187,7 @@ JA_VARIANTS = {
     "ŋ": "N", "ɴ": "N", "ɲ": "n", "ɱ": "m",
     "ç": "h", "x": "h", "h": "h", "ɦ": "h", "β": "b", "ɟ": "g", "ɡ": "g", "c": "k", "ʔ": "",
     "ə": "a", "ɐ": "a", "ʌ": "a", "ɑ": "a", "æ": "a", "ä": "a",
-    "ɛ": "e", "e": "e", "ɪ": "i", "i": "i", "ʊ": "u", "u": "u", "o": "o", "ɔ": "o", "ø": "e",
-    "a": "a",
+    "ɛ": "e", "e": "e", "ɪ": "i", "i": "i", "ʊ": "u", "u": "u", "o": "o", "ɔ": "o", "ø": "e", "a": "a",
 }
 
 
@@ -157,17 +208,27 @@ def norm(tok):
 
 
 def actual_phones(path):
+    """Allosaurus phones WITH timestamps → [{p, raw, t}]."""
     from allosaurus.app import read_recognizer
     m = read_recognizer()
     try:
-        raw = m.recognize(path, lang_id="jpn").split()
+        out = m.recognize(path, lang_id="jpn", timestamp=True)
     except Exception:
-        raw = m.recognize(path).split()
-    return [{"p": norm(t), "raw": t} for t in raw]
+        out = m.recognize(path, timestamp=True)
+    seq = []
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) >= 3:
+            try:
+                t = float(parts[0])
+            except ValueError:
+                continue
+            raw = "".join(parts[2:])
+            seq.append({"p": norm(raw), "raw": raw, "t": t})
+    return seq
 
 
 def align(exp, act):
-    """Needleman-Wunsch on normalized phones → list of (e_or_None, a_or_None)."""
     n, m = len(exp), len(act)
     dp = [[0] * (m + 1) for _ in range(n + 1)]
     for i in range(1, n + 1):
@@ -192,78 +253,114 @@ def align(exp, act):
 def rrow_realization(raw):
     b = strip_dia(raw)
     if b in ("l", "ɫ", "ɭ"):
-        return "l"            # lateral — common English/German substitution
+        return "l"
     if b in ("ɹ", "ɻ"):
-        return "ɹ"            # English bunched/retroflex r
+        return "ɹ"
     if b in ("ɾ", "r", "ɽ", "ɺ"):
-        return "flap"         # native-like
+        return "flap"
     return "other"
 
 
 def fu_realization(raw):
     b = strip_dia(raw)
     if b in ("f", "v", "ʋ"):
-        return "f"            # labiodental — the German/English substitution
+        return "f"
     if b in ("ɸ", "h", "ç", "x", "β"):
         return "ok"
     return "other"
 
 
+def pitch_track(path):
+    import parselmouth, numpy as np
+    snd = parselmouth.Sound(path)
+    p = snd.to_pitch()
+    return p.xs(), p.selected_array["frequency"], snd
+
+
+def accent_check(exp, meta, act, path):
+    """Compare UniDic downstep position to where the pitch actually dropped.
+    Words are located in time via the phone alignment; the contour is sampled per
+    mora over the word's span (Japanese is mora-timed, so equal bins are fair)."""
+    if not meta:
+        return None
+    try:
+        import numpy as np
+    except Exception:
+        return None
+    pairs = align(exp, act)
+    wt = {}
+    for e, a in pairs:
+        if e is not None and a is not None and a.get("t") is not None:
+            wt.setdefault(e["word"], []).append(a["t"])
+    times, f0, _ = pitch_track(path)
+    checked = []
+    for wi, wm in enumerate(meta):
+        ds, n = wm["downstep"], wm["n"]
+        if ds is None or n < 2:
+            continue
+        ts = wt.get(wi)
+        if not ts or len(ts) < 2:
+            continue
+        s, e0 = min(ts), max(ts)
+        if e0 - s < 0.12:
+            continue
+        bins = []
+        for k in range(n):
+            a0 = s + (e0 - s) * k / n
+            a1 = s + (e0 - s) * (k + 1) / n
+            vals = [f0[j] for j in range(len(times)) if a0 <= times[j] < a1 and f0[j] > 0]
+            bins.append(float(np.median(vals)) if vals else None)
+        if sum(1 for b in bins if b) < 2:
+            continue
+        best_k, best_drop = 0, 0.0
+        for k in range(1, n):
+            if bins[k - 1] and bins[k]:
+                d = 12 * math.log2(bins[k - 1] / bins[k])
+                if d > best_drop:
+                    best_drop, best_k = d, k
+        realized = best_k if best_drop >= 2.0 else 0
+        match = (ds == 0 and realized == 0) or (ds >= 1 and abs(realized - ds) <= 1)
+        checked.append({"surface": wm["surface"], "n": n,
+                        "expected_downstep": ds, "realized_downstep": realized, "match": match})
+    return checked
+
+
 def prosody(path):
     try:
-        import parselmouth, numpy as np
+        import numpy as np
+        times, f0, snd = pitch_track(path)
     except Exception as e:
         return {"prosody": False, "err": str(e)}
-    snd = parselmouth.Sound(path)
-    f0 = snd.to_pitch().selected_array["frequency"]
     voiced = f0[f0 > 0]
     if voiced.size < 5:
         return {"prosody": True, "note": "too little voiced audio"}
     p10, p90 = np.percentile(voiced, [10, 90])
     range_st = float(12 * np.log2(p90 / p10)) if p10 > 0 else 0.0
-    inten = snd.to_intensity()
-    iv = inten.values[inten.values > 0]
-    return {
-        "prosody": True,
-        "mean_f0_hz": round(float(np.median(voiced)), 1),
-        "pitch_range_semitones": round(range_st, 1),
-        "intensity_sd_db": round(float(np.std(iv)), 1) if iv.size else None,
-        "monotone_flag": range_st < 4.0,   # JA pitch-accent uses a smaller range than EN intonation
-    }
+    return {"prosody": True, "mean_f0_hz": round(float(np.median(voiced)), 1),
+            "pitch_range_semitones": round(range_st, 1), "monotone_flag": range_st < 4.0}
 
 
 def analyze(text, path):
-    exp = expected_phones(text)
+    exp, meta = build_expected(text)
     if exp is None:
-        return {"err": "pykakasi not installed"}
+        return {"err": "pykakasi/fugashi not installed"}
     if not exp:
         return {"err": "no Japanese in transcript"}
     act = actual_phones(path)
-    pairs = align(exp, act)
-    ea = [(e, a) for e, a in pairs if e is not None]
-
+    ea = [(e, a) for e, a in align(exp, act) if e is not None]
     matched = sum(1 for e, a in ea if a and e["p"] == a["p"])
 
-    # 長音 — long vowels shortened (second half of a long vowel deleted)
     long2 = [(e, a) for e, a in ea if e["role"] == "long2"]
     long_short = [e["mora"] for e, a in long2 if a is None]
-
-    # ら行 — flap realized as l / English ɹ
     rrow = [(e, a) for e, a in ea if e["role"] == "rrow"]
-    r_subs = []
-    for e, a in rrow:
-        kind = rrow_realization(a["raw"]) if a else "drop"
-        if kind in ("l", "ɹ"):
-            r_subs.append((e["mora"], kind))
-
-    # ふ — /ɸ/ realized as labiodental f
+    r_subs = [(e["mora"], rrow_realization(a["raw"])) for e, a in rrow
+              if a and rrow_realization(a["raw"]) in ("l", "ɹ")]
     fu = [(e, a) for e, a in ea if e["role"] == "fu"]
-    fu_subs = [(e["mora"], "f") for e, a in fu if a and fu_realization(a["raw"]) == "f"]
-
-    # 促音 — geminate っ dropped
+    fu_subs = [e["mora"] for e, a in fu if a and fu_realization(a["raw"]) == "f"]
     gem = [(e, a) for e, a in ea if e["role"] == "geminate"]
     gem_drop = sum(1 for e, a in gem if a is None)
 
+    accent = accent_check(exp, meta, act, path)
     return {
         "n_expected": len(exp), "n_actual": len(act), "n_aligned": len(ea),
         "segment_match_pct": round(100 * matched / max(len(ea), 1)),
@@ -271,6 +368,7 @@ def analyze(text, path):
         "ra_row": {"expected": len(rrow), "substituted": len(r_subs), "examples": r_subs[:6]},
         "fu": {"expected": len(fu), "substituted": len(fu_subs), "examples": fu_subs[:6]},
         "geminate": {"expected": len(gem), "dropped": gem_drop},
+        "accent": accent,
         "prosody": prosody(path),
     }
 
@@ -333,19 +431,26 @@ def main():
             ex = "  e.g. " + ", ".join(f"{m}→{k}" for m, k in ra["examples"][:4]) if ra["examples"] else ""
             print(f"  ら行 flap /ɾ/:    {ra['substituted']}/{ra['expected']} as l or ɹ{ex}")
         if fu["expected"]:
-            ex = "  e.g. " + ", ".join(m for m, _ in fu["examples"][:4]) if fu["examples"] else ""
+            ex = "  e.g. " + ", ".join(fu["examples"][:4]) if fu["examples"] else ""
             print(f"  ふ /ɸ/→f:         {fu['substituted']}/{fu['expected']} labiodental{ex}")
         if gem["expected"]:
             print(f"  促音 geminate っ:  {gem['dropped']}/{gem['expected']} dropped")
+        ac = x["accent"]
+        if ac:
+            good = sum(1 for w in ac if w["match"])
+            miss = [w for w in ac if not w["match"]]
+            print(f"  アクセント pitch-accent: {good}/{len(ac)} words matched the dictionary pattern")
+            for w in miss[:4]:
+                exp_d = "heiban (no drop)" if w["expected_downstep"] == 0 else f"drop after mora {w['expected_downstep']}"
+                got = "no drop" if w["realized_downstep"] == 0 else f"drop after mora {w['realized_downstep']}"
+                print(f"      {w['surface']}: expected {exp_d}, heard {got}")
         pr = x["prosody"]
         if pr.get("prosody") and "pitch_range_semitones" in pr:
-            flat = "  ⚑ flat — work on pitch-accent movement" if pr["monotone_flag"] else ""
-            print(f"  prosody: pitch range {pr['pitch_range_semitones']} st, "
-                  f"median {pr['mean_f0_hz']} Hz{flat}")
+            flat = "  ⚑ flat" if pr.get("monotone_flag") else ""
+            print(f"  prosody: pitch range {pr['pitch_range_semitones']} st, median {pr['mean_f0_hz']} Hz{flat}")
     print("─" * 64)
-    print("Directional only — Allosaurus is imperfect; read trends, not single hits.")
-    print("Pitch-ACCENT correctness needs an accent dictionary (not graded here) — "
-          "the pitch range is descriptive.")
+    print("Directional only — Allosaurus is imperfect and connected-speech accent has")
+    print("phrasing effects; read trends, not single hits. Accent = UniDic (unidic-lite).")
 
 
 if __name__ == "__main__":

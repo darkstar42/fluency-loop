@@ -151,8 +151,9 @@ the right one from `config.json`:
 - `target=en` → `probe.py` + `pron_align.py` (English; transfer flags assume a
   German L1, `GER_TARGETS`).
 - `target=ja` → `pron_align_ja.py` (Japanese: 長音 long vowels, ら-row flap, ふ /ɸ/,
-  促音 geminates, plus descriptive pitch/prosody — true pitch-accent grading would
-  need an accent dictionary, which isn't bundled).
+  促音 geminates, and **pitch-accent** — the word's UniDic downstep vs. where the
+  pitch actually dropped, with Allosaurus timestamps mapping the contour to morae.
+  Directional: accent in connected speech has phrasing effects).
 - other → fluency only.
 
 Both pronunciation modules compare expected phones (CMUdict for English, a
