@@ -39,6 +39,9 @@ It reads Handy's `history.db` and the matching `.wav` recordings from
 `~/Library/Application Support/com.pais.handy/` (macOS). See `README.md` for
 one-time setup (Python venv + ffmpeg) and what each script reports.
 
+> If only ~5 takes are ever available, the user likely hasn't raised Handy's
+> history limit (default 5). Point them to the README setup step to increase it.
+
 The pronunciation alignment (`pron_align.py`) flags **German→English** transfer
 patterns by default. If the learner's first language isn't German, adjust the
 `GER_TARGETS` map in `scripts/probe.py` / `pron_align.py` to their L1.

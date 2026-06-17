@@ -45,6 +45,10 @@ actually predict perceived fluency.
 - [Handy](https://github.com/cjpais/Handy) — the speech-to-text app. It stores a
   history database and `.wav` recordings under
   `~/Library/Application Support/com.pais.handy/`, which the scripts read.
+  - **Raise the history limit first.** Handy keeps only the **last 5** takes by
+    default, so the analyzer would never see more than your 5 most recent
+    recordings. In Handy's settings, increase the history size to something large
+    (1000 works well) so older practice takes stick around to compare against.
 - `ffmpeg` / `ffprobe` — `brew install ffmpeg`
 - Python 3.12
 
