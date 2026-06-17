@@ -115,6 +115,25 @@ scripts/analyze.sh --ids 121,122,123   # specific takes
   are the reference. Their transfer flags assume German→English (`GER_TARGETS`);
   model a new module on them for another target language or native L1.
 
+## Interactive lessons (submit & grade)
+
+Lessons aren't just to read — you can **submit** them and get evaluated. A tiny
+local server (stdlib Python, no venv) serves the lesson and captures your answers:
+
+```bash
+python3 scripts/serve.py --open lessons/0001-your-lesson.html
+```
+
+Do the lesson in your browser, hit **Submit**, and your answers are saved to
+`submissions/`. Then back in Claude Code say *"grade the latest submission"* — the
+teacher evaluates your answers against the lesson's rubric, with full context
+(your mission, your past takes, your learning records), gives feedback, and
+updates your records. Because you dictate answers with Handy, one submitted lesson
+gives you **both** a graded written answer *and* fluency metrics from the audio.
+
+The server is localhost-only and never grades or sends anything anywhere — it's
+just the bridge that lets a browser page save your answers to disk.
+
 ## What's in here
 
 ```
@@ -124,9 +143,10 @@ MISSION.md          Why you're learning — the compass for every lesson (start 
 RESOURCES.md        Trusted sources the teacher curates (start empty)
 NOTES.md            Teacher's scratchpad + where to resume (start empty)
 learning-records/   Decision-grade insights about your progress (ADR-style)
-lessons/            Your lessons — self-contained printable HTML
+lessons/            Your lessons — self-contained printable HTML (+ *.rubric.json)
+submissions/        Answers you submit from a lesson (graded ones move to graded/)
 reference/          Cheat-sheets distilled from lessons
-scripts/            The offline speech analyzer (lang.py = language adapters) + setup
+scripts/            The offline analyzer (lang.py = language adapters), serve.py + setup
 .claude/skills/teach/   The teaching method (the /teach skill), bundled in
 ```
 
