@@ -90,9 +90,21 @@ The user does the lesson in the browser, hits **Submit**, and their answers land
 in `submissions/<lesson>__<timestamp>.json`. The server never grades — **you do**,
 back here in Claude Code, with full context.
 
-**When you create a lesson, make it submittable.** Mark each answer field with
-`data-qid` (and `data-prompt`), set `data-lesson` on `<html>`, and embed this
-block once (it no-ops when opened from `file://`, so the lesson still prints):
+**Every speaking task needs a focusable input box — this is required, not
+optional.** Handy pastes its transcription into whatever field is *focused* on the
+page, so a lesson that asks the user to speak must give them somewhere for the text
+to land. For each take / round / answer, include a labeled, focusable
+`<textarea>` (one per round — e.g. "Round 1 (4 min)", "Round 2 (3 min)"). A live
+word count and a clear button are nice touches. Without these boxes the speaking
+instructions have nowhere to go and the lesson doesn't work — this is the #1 thing
+to get right. (You still read the real takes from Handy's history DB for audio
+analysis; the boxes are the on-page surface so dictation isn't lost and so answers
+can be submitted.)
+
+**Make the lesson submittable.** Those same `<textarea>` boxes are the answer
+fields: give each one a `data-qid` (and `data-prompt`), set `data-lesson` on
+`<html>`, and embed this block once (it no-ops when opened from `file://`, so the
+lesson still prints):
 
 ```html
 <button id="submitLesson">Submit answers</button>
@@ -174,6 +186,8 @@ none are committed.
 
 - Keep `MISSION.md`, `RESOURCES.md`, `NOTES.md`, `learning-records/`, `lessons/`,
   and `reference/` updated per the format docs in `.claude/skills/teach/`.
-- Lessons are self-contained, beautiful, printable HTML in `lessons/`, made
-  submittable (the submit block + `data-qid` fields) with a `*.rubric.json` beside them.
+- Lessons are self-contained, beautiful, printable HTML in `lessons/`, with a
+  focusable `<textarea>` for every speaking round (Handy pastes into the focused
+  field), made submittable (the submit block + `data-qid` fields) and a
+  `*.rubric.json` beside them.
 - Numbered files (`learning-records/`, `lessons/`) increment: `0001-`, `0002-`, …

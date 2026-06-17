@@ -11,10 +11,9 @@ analyzer. Speak → measure → lesson → repeat: the fluency loop.
 your answers into Handy, and the analyzer reads its recordings. Setup details are
 below.
 
-This is a **blank starter you make your own**: on GitHub, click **Use this
-template** to create your own private copy (or clone it), run the onboarding, pick
-your language, and your first session builds everything from your own mission. No
-lessons or learner data ship with it.
+This is a **blank starter you make your own**: take a private copy (see Quick
+start), run the onboarding, pick your language, and your first session builds
+everything from your own mission. No lessons or learner data ship with it.
 
 ---
 
@@ -74,10 +73,21 @@ errors that matter for that language. Add a new one by modeling it on these.
 
 ## Quick start
 
-0. **Get your own copy.** On GitHub, click **Use this template → Create a new
-   repository** (make it **private** — your lessons and notes will live in it).
-   Then clone your copy locally.
-1. **Open this folder in Claude Code.**
+0. **Get your own private copy that can still pull updates.** Create an empty
+   **private** repo on GitHub (e.g. `my-fluency`, don't initialize it), then:
+   ```bash
+   git clone https://github.com/darkstar42/fluency-loop.git my-fluency
+   cd my-fluency
+   git remote rename origin upstream                       # keep the original as 'upstream'
+   git remote add origin git@github.com:<you>/my-fluency.git
+   git push -u origin main
+   ```
+   This keeps the full history (so updates merge cleanly), your copy stays private,
+   and it isn't publicly listed as a fork. **Later, pull improvements** with
+   `git pull upstream main`. (Don't use GitHub's "Use this template" button — it
+   drops history, so you can never pull updates; and a plain fork would be public
+   and publicly linked to this repo, which you don't want for personal notes.)
+1. **Open the folder in Claude Code.**
 2. **Run the teacher:**
    ```
    /teach
