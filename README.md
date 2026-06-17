@@ -94,9 +94,20 @@ scripts/            The offline speech analyzer + setup
 .claude/skills/teach/   The teaching method (the /teach skill), bundled in
 ```
 
+## Credits & license
+
+This project is released under the [MIT License](LICENSE).
+
+The `/teach` skill bundled in `.claude/skills/teach/` is adapted from
+**[mattpocock/skills](https://github.com/mattpocock/skills)** by Matt Pocock, also
+MIT licensed. The teaching workspace around it — the offline speech analyzer in
+`scripts/`, the templates, and these docs — is original to this repository.
+
 ## Privacy
 
-Your mission, notes, lessons, and learning records are written into this repo as
-you go — they're personal. If you push this to a **public** GitHub repo, keep that
-in mind. The analyzer reads Handy's local database and audio on your machine and
-sends nothing to any server.
+**Your clone is your own private workspace.** As you use it, your mission, notes,
+lessons, and learning records are written into the repo — committing them is fine
+and lets you track your progress over time. Just don't push that personal content
+to a **public or shared** repo: keep your own copy private (e.g.
+`gh repo create my-english --private`). The analyzer reads Handy's local database
+and audio on your machine and sends nothing to any server.
