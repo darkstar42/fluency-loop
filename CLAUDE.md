@@ -26,6 +26,13 @@ and proceed exactly as described in `.claude/skills/teach/SKILL.md`.
    targeted, encouraging feedback. Track flow (speed, pausing, length of unbroken
    runs), not error count.
 
+**Not just prompted practice.** Handy's history also holds the user's everyday
+dictation — messages, notes, work emails, AI prompts. That ambient usage is real
+spontaneous English and is often the truest signal of how they speak under no
+pressure, so analyze *all* new takes, not only answers to your prompts. When it
+matters, distinguish deliberate practice rounds (e.g. same-topic monologue
+repetitions) from general dictation — but mine both for patterns to teach from.
+
 ## The analyzer (`scripts/`)
 
 Run the whole offline suite on new takes:

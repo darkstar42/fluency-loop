@@ -19,6 +19,15 @@ transcripts *and* analyzes the audio — speech rate, pauses, length of unbroken
 runs, pronunciation — and turns the patterns into your next lesson. Progress is
 tracked as **flow**, not error count, so it stays low-stress.
 
+Crucially, this isn't limited to deliberate practice. If you use Handy as your
+everyday speech-to-text — dictating messages, notes, prompts, work emails — then
+**every one of those takes is real spontaneous English**, and the analyzer can
+mine all of it, not just prompted exercises. That ambient daily usage is often
+the truest signal of how you actually speak under no pressure to "perform." It's
+also why you raise Handy's history limit (below): so days of real interactions
+accumulate into a corpus the teacher can learn from, instead of just your last
+few recordings.
+
 Everything is local: lessons are HTML files in `lessons/`, your mission and notes
 are markdown at the repo root, and the analyzer never sends audio anywhere.
 
@@ -48,7 +57,9 @@ actually predict perceived fluency.
   - **Raise the history limit first.** Handy keeps only the **last 5** takes by
     default, so the analyzer would never see more than your 5 most recent
     recordings. In Handy's settings, increase the history size to something large
-    (1000 works well) so older practice takes stick around to compare against.
+    (1000 works well) so your everyday dictation *and* practice takes accumulate
+    over days — giving the teacher a real corpus of your spontaneous English to
+    analyze and compare across, not just a handful of recent clips.
 - `ffmpeg` / `ffprobe` — `brew install ffmpeg`
 - Python 3.12
 
