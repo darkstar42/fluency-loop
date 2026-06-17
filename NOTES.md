@@ -4,7 +4,12 @@
 > sessions, and where to resume. Empty until your first `/teach` session fills it in.
 
 ## ▶ NEXT SESSION — RESUME HERE
-_Start here next time: what's done, what's open, and the last-seen Handy take id to analyze from._
+_Start here next time: what's done and what's open._
+
+- **Last-seen Handy take id:** _none yet_ — the highest take id already analyzed.
+  At session start, run `scripts/analyze.sh --since <this id>` to sweep in
+  everything dictated since (including everyday usage between lessons), then bump
+  this number to the newest take you looked at.
 
 ## About the learner
 _Native language, level, relevant background, tools you use — captured as it comes up._

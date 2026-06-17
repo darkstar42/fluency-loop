@@ -17,6 +17,26 @@ first move is to point the user at it. Once invoked, the skill will interview th
 user about *why* they want to improve their spoken English, write `MISSION.md`,
 and proceed exactly as described in `.claude/skills/teach/SKILL.md`.
 
+## Start of every session (do this automatically)
+
+A new session has no memory of the last one. So at the **start of every session**,
+before anything else:
+
+1. Read `MISSION.md`, the `learning-records/`, and `NOTES.md` (especially the
+   "RESUME HERE" block).
+2. Find the **last-seen take id** recorded in `NOTES.md`, then run
+   `scripts/analyze.sh --since <last-seen-id>`. This sweeps in *everything* the
+   user dictated into Handy since you last looked — including all the everyday
+   dictation that happened between lessons, not just prompted practice.
+3. Use your judgment on the results: surface what's actionable, keep it
+   encouraging, don't dump raw metrics. Turn patterns into the next lesson.
+4. **Update the last-seen id** in `NOTES.md` to the newest take you analyzed, so
+   the next session resumes cleanly.
+
+This watermark is what makes between-lesson usage get analyzed automatically. If
+`NOTES.md` has no last-seen id yet (fresh workspace), analyze the most recent
+takes (`scripts/analyze.sh --last 10`) and record the highest id you saw.
+
 ## The practice loop
 
 1. You give a speaking prompt.
