@@ -23,6 +23,8 @@ misses out-of-vocabulary words (names etc.), so read rates/trends, not single hi
 """
 import argparse, json, os, re, sqlite3, sys, unicodedata
 
+import lang as L
+
 HANDY = os.path.expanduser("~/Library/Application Support/com.pais.handy")
 DB = os.path.join(HANDY, "history.db")
 RECDIR = os.path.join(HANDY, "recordings")
@@ -197,9 +199,22 @@ def main():
     ap.add_argument("--since", type=int); ap.add_argument("--ids")
     ap.add_argument("--last", type=int, default=5)
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--force", action="store_true", help="run even if the workspace language isn't English")
     args = ap.parse_args()
     if not os.path.exists(DB):
         sys.exit("no db")
+
+    cfg = L.load_config()
+    target, native = cfg.get("target_language"), cfg.get("native_language")
+    if target not in (None, "en") and not args.force:
+        print(f"Pronunciation alignment: no module for target '{target}' yet.\n"
+              "This analyzer covers ENGLISH — the German→English transfer set is the\n"
+              "reference implementation. Fluency metrics work for every language\n"
+              "(see fluency.py); add an L1→L2 module here to extend pronunciation.")
+        return
+    if native and native != "de":
+        print(f"[note] transfer flags are tuned for German→English; native language "
+              f"'{native}' may differ — read trends, not single hits.\n")
 
     results = []
     for r in fetch(args):

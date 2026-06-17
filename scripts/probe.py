@@ -18,6 +18,8 @@ Nothing here talks to a remote service.
 """
 import argparse, json, os, re, sqlite3, sys
 
+import lang as L
+
 HANDY = os.path.expanduser("~/Library/Application Support/com.pais.handy")
 DB = os.path.join(HANDY, "history.db")
 RECDIR = os.path.join(HANDY, "recordings")
@@ -124,10 +126,19 @@ def main():
     ap.add_argument("--since", type=int); ap.add_argument("--ids")
     ap.add_argument("--last", type=int, default=5)
     ap.add_argument("--no-pron", action="store_true", help="skip pronunciation")
+    ap.add_argument("--force", action="store_true", help="run even if the workspace language isn't English")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
     if not os.path.exists(DB):
         sys.exit(f"no db at {DB}")
+
+    target = L.load_config().get("target_language")
+    if target not in (None, "en") and not args.force:
+        print(f"Probe: disfluency markers and the pronunciation set are English-tuned, "
+              f"so this is skipped for target '{target}'.\n"
+              "(Its prosody/pitch analysis is language-neutral and a candidate to "
+              "generalize later.) Fluency metrics work for every language — see fluency.py.")
+        return
 
     out = []
     for r in fetch(args):

@@ -1,0 +1,5 @@
+{
+  "target_language": "en",
+  "native_language": "de",
+  "_note": "Copied to config.json by the onboarding /teach session. target_language: en | ja | generic (generic = whitespace-word fluency for any other language). native_language drives which pronunciation module applies — English<-German is the reference; other pairs get fluency only for now."
+}

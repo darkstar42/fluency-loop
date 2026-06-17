@@ -1,7 +1,9 @@
 # Teaching workspace — agent guide
 
-This repository is a **teaching workspace** for improving spoken English. The
-teaching method lives in the bundled `/teach` skill (`.claude/skills/teach/`).
+This repository is a **teaching workspace** for improving spoken fluency in *any*
+language the user is learning. The teaching method lives in the bundled `/teach`
+skill (`.claude/skills/teach/`); the speech analyzer in `scripts/` adapts to the
+chosen language.
 
 ## First run
 
@@ -13,9 +15,25 @@ When a session starts, check `MISSION.md`. If it still contains the
 ```
 
 `/teach` cannot be triggered automatically (it's user-invoked by design), so the
-first move is to point the user at it. Once invoked, the skill will interview the
-user about *why* they want to improve their spoken English, write `MISSION.md`,
-and proceed exactly as described in `.claude/skills/teach/SKILL.md`.
+first move is to point the user at it.
+
+### Onboarding: establish the language first
+
+As part of that first `/teach` session, before building any lessons, find out:
+
+1. **Which language they want to learn to speak** (the target).
+2. **Their native language(s)** — this drives which pronunciation module applies.
+
+Then write `config.json` at the repo root (copy `config.example.json`):
+
+```json
+{ "target_language": "en", "native_language": "de" }
+```
+
+Use `en` or `ja` for the full fluency adapters (words / morae); use `generic` for
+any other language (whitespace-word fluency still works). The analyzer reads this
+file. Then proceed with the mission interview and lessons as described in
+`.claude/skills/teach/SKILL.md`, grounding everything in the chosen language.
 
 ## Start of every session (do this automatically)
 
@@ -25,9 +43,11 @@ before anything else:
 1. Read `MISSION.md`, the `learning-records/`, and `NOTES.md` (especially the
    "RESUME HERE" block).
 2. Find the **last-seen take id** recorded in `NOTES.md`, then run
-   `scripts/analyze.sh --since <last-seen-id>`. This sweeps in *everything* the
-   user dictated into Handy since you last looked — including all the everyday
-   dictation that happened between lessons, not just prompted practice.
+   `scripts/analyze.sh --since <last-seen-id>`. It reads the target language from
+   `config.json` and analyzes only takes in that language (skipping the user's
+   other-language dictation in the shared Handy history). This sweeps in
+   *everything* they dictated in the target language since you last looked —
+   including everyday usage between lessons, not just prompted practice.
 3. Use your judgment on the results: surface what's actionable, keep it
    encouraging, don't dump raw metrics. Turn patterns into the next lesson.
 4. **Update the last-seen id** in `NOTES.md` to the newest take you analyzed, so
@@ -48,30 +68,36 @@ takes (`scripts/analyze.sh --last 10`) and record the highest id you saw.
 
 **Not just prompted practice.** Handy's history also holds the user's everyday
 dictation — messages, notes, work emails, AI prompts. That ambient usage is real
-spontaneous English and is often the truest signal of how they speak under no
-pressure, so analyze *all* new takes, not only answers to your prompts. When it
-matters, distinguish deliberate practice rounds (e.g. same-topic monologue
-repetitions) from general dictation — but mine both for patterns to teach from.
+spontaneous speech and is often the truest signal of how they speak under no
+pressure, so analyze *all* new takes in the target language, not only answers to
+your prompts. When it matters, distinguish deliberate practice rounds (e.g.
+same-topic monologue repetitions) from general dictation — but mine both for
+patterns to teach from.
 
 ## The analyzer (`scripts/`)
 
 Run the whole offline suite on new takes:
 
 ```
-scripts/analyze.sh --since <last-seen-id>     # fluency + prosody + pronunciation
+scripts/analyze.sh --since <last-seen-id>     # fluency (+ pronunciation if target is English)
 scripts/analyze.sh --ids 805,806,807
 ```
 
 It reads Handy's `history.db` and the matching `.wav` recordings from
-`~/Library/Application Support/com.pais.handy/` (macOS). See `README.md` for
-one-time setup (Python venv + ffmpeg) and what each script reports.
+`~/Library/Application Support/com.pais.handy/` (macOS), and picks the language
+from `config.json`. See `README.md` for one-time setup (Python venv + ffmpeg) and
+what each script reports.
 
 > If only ~5 takes are ever available, the user likely hasn't raised Handy's
 > history limit (default 5). Point them to the README setup step to increase it.
 
-The pronunciation alignment (`pron_align.py`) flags **German→English** transfer
-patterns by default. If the learner's first language isn't German, adjust the
-`GER_TARGETS` map in `scripts/probe.py` / `pron_align.py` to their L1.
+**Fluency** (`fluency.py`) works for every language — the audio metrics are
+language-neutral and only the counting unit changes (words / morae / …, via
+`scripts/lang.py`). **Pronunciation** (`probe.py`, `pron_align.py`) is the
+**English-from-German** reference module: it runs only when `target_language` is
+`en`, and its transfer flags assume a German L1 (`GER_TARGETS` in those scripts).
+To support another target language or L1, add an adapter in `lang.py` and/or a
+pronunciation module modeled on the English one.
 
 ## Conventions
 

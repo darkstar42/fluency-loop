@@ -1,35 +1,35 @@
 #!/usr/bin/env python3
 """
-fluency.py — pull Handy speech-to-text takes and report spoken-fluency metrics.
+fluency.py — pull Handy speech-to-text takes and report spoken-fluency metrics,
+in whatever language you're learning.
 
 Combines the transcript (from history.db) with audio analysis of the matching
 .wav recording (via ffprobe + ffmpeg silencedetect) to produce the metrics that
 actually predict perceived fluency: speech rate + pausing (Bosker et al. 2013) —
-NOT error counts.
+NOT error counts. The audio analysis is language-neutral; the counting UNIT
+(words / morae / …) comes from a per-language adapter in lang.py.
+
+Language is taken from config.json (set during onboarding) unless --lang is given.
+Takes that aren't in the target language are skipped, so this works on your whole
+Handy history — everyday dictation included — not just prompted practice.
 
 Usage:
   python3 scripts/fluency.py                 # the 5 most recent takes
   python3 scripts/fluency.py --since 801     # every take with id > 801
-  python3 scripts/fluency.py --ids 805,806,807   # specific takes
+  python3 scripts/fluency.py --ids 805,806   # specific takes
   python3 scripts/fluency.py --last 3        # the 3 most recent
-  python3 scripts/fluency.py --since 801 --json   # machine-readable
+  python3 scripts/fluency.py --lang ja --since 801 --json   # override + machine-readable
 
-Tunables: --noise -32 (dB silence floor), --min-pause 0.3 (sec).
+Tunables: --noise -32 (dB silence floor), --min-pause (sec; default per language).
 ffmpeg/ffprobe must be on PATH.
 """
 import argparse, json, os, re, sqlite3, subprocess, sys
 
+import lang as L
+
 HANDY = os.path.expanduser("~/Library/Application Support/com.pais.handy")
 DB = os.path.join(HANDY, "history.db")
 RECDIR = os.path.join(HANDY, "recordings")
-
-# Fillers that get transcribed as words (so visible in text). Silent pauses are
-# measured from audio instead.
-FILLERS = [
-    r"\buh+\b", r"\bum+\b", r"\berm+\b", r"\bhmm+\b", r"\blike\b",
-    r"\byou know\b", r"\bi mean\b", r"\bi don'?t know\b", r"\bsort of\b",
-    r"\bkind of\b", r"\bbasically\b", r"\bwell\b", r"\byeah\b", r"\bso\b",
-]
 
 
 def ffprobe_duration(path):
@@ -58,20 +58,22 @@ def detect_silences(path, noise_db, min_pause, duration):
     return intervals
 
 
-def analyze_audio(path, words, noise_db, min_pause):
+def analyze_audio(path, units, noise_db, min_pause):
+    """Language-neutral audio metrics. `units` is the transcript's unit count
+    (words / morae / …) so rate and run-length come out in that unit."""
     duration = ffprobe_duration(path)
     if not duration:
         return {"audio": False}
     sil = detect_silences(path, noise_db, min_pause, duration)
 
-    lead = sil[0][1] if sil and sil[0][0] <= 0.05 else 0.0           # silence before first word
+    lead = sil[0][1] if sil and sil[0][0] <= 0.05 else 0.0           # silence before first unit
     trail = duration - sil[-1][0] if sil and sil[-1][1] >= duration - 0.05 else 0.0
     internal = [iv for iv in sil
                 if not (iv[0] <= 0.05) and not (iv[1] >= duration - 0.05)]
     n_pauses = len(internal)
     mid_pause_total = sum(e - s for s, e in internal)
 
-    speech_span = max(duration - lead - trail, 1e-6)                 # first word → last word
+    speech_span = max(duration - lead - trail, 1e-6)                 # first unit → last unit
     articulation_time = max(speech_span - mid_pause_total, 1e-6)     # actual phonation
 
     return {
@@ -86,19 +88,20 @@ def analyze_audio(path, words, noise_db, min_pause):
         "pause_total_s": round(mid_pause_total, 2),
         "mean_pause_s": round(mid_pause_total / n_pauses, 2) if n_pauses else 0.0,
         "longest_pause_s": round(max((e - s for s, e in internal), default=0.0), 2),
-        # words/min over the whole span (incl. pauses) vs. over phonation only
-        "speech_rate_wpm": round(words / (speech_span / 60), 1),
-        "articulation_rate_wpm": round(words / (articulation_time / 60), 1),
-        # mean length of run: words spoken per uninterrupted stretch
-        "mean_run_words": round(words / (n_pauses + 1), 1),
+        # rate over the whole span (incl. pauses) vs. over phonation only
+        "speech_rate": round(units / (speech_span / 60), 1),
+        "articulation_rate": round(units / (articulation_time / 60), 1),
+        # mean length of run: units spoken per uninterrupted stretch
+        "mean_run": round(units / (n_pauses + 1), 1),
     }
 
 
-def filler_count(text):
+def filler_count(text, fillers):
+    if not fillers:
+        return 0, {}
     low = text.lower()
-    total = 0
-    hits = {}
-    for pat in FILLERS:
+    total, hits = 0, {}
+    for pat in fillers:
         c = len(re.findall(pat, low))
         if c:
             hits[pat.strip(r"\b").replace("'?", "'")] = c
@@ -125,60 +128,76 @@ def fetch_rows(args):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Handy take fluency analyzer")
+    ap = argparse.ArgumentParser(description="Handy take fluency analyzer (any language)")
     ap.add_argument("--since", type=int, help="takes with id greater than this")
     ap.add_argument("--ids", help="comma-separated take ids")
     ap.add_argument("--last", type=int, default=5, help="N most recent (default 5)")
+    ap.add_argument("--lang", help="language code (en|ja|…); default: config.json")
     ap.add_argument("--noise", type=float, default=-32, help="silence floor dB (default -32)")
-    ap.add_argument("--min-pause", type=float, default=0.3, help="min pause sec (default 0.3)")
+    ap.add_argument("--min-pause", type=float, default=None, help="min pause sec (default per language)")
     ap.add_argument("--json", action="store_true", help="emit JSON")
     args = ap.parse_args()
 
     if not os.path.exists(DB):
         sys.exit(f"history.db not found at {DB}")
 
+    code = L.resolve_code(args.lang)
+    a = L.get_adapter(code)
+    unit, unit1, rate_label = a["unit"], a["unit_one"], a["rate_label"]
+    min_pause = args.min_pause if args.min_pause is not None else a["min_pause"]
+
     rows = fetch_rows(args)
     results = []
     for r in rows:
         text = r["transcription_text"] or ""
-        words = len(text.split())
+        in_target = a["is_target"](text)
+        units, reading = a["count"](text) if in_target else (0, None)
         wav = os.path.join(RECDIR, r["file_name"])
-        audio = analyze_audio(wav, words, args.noise, args.min_pause) \
-            if os.path.exists(wav) else {"audio": False}
-        nfill, fhits = filler_count(text)
+        audio = analyze_audio(wav, units, args.noise, min_pause) \
+            if (in_target and os.path.exists(wav)) else {"audio": False}
+        nfill, fhits = filler_count(text, a["fillers"]) if in_target else (0, {})
         results.append({
-            "id": r["id"], "timestamp": r["timestamp"],
-            "file": r["file_name"], "words": words,
-            "fillers": nfill, "filler_breakdown": fhits,
-            "text": text, **audio,
+            "id": r["id"], "timestamp": r["timestamp"], "file": r["file_name"],
+            "in_target": in_target, "units": units, "reading": reading,
+            "fillers": nfill, "filler_breakdown": fhits, "text": text, **audio,
         })
 
     if args.json:
-        print(json.dumps(results, indent=2, ensure_ascii=False))
+        print(json.dumps({"language": code, "unit": unit, "takes": results},
+                         indent=2, ensure_ascii=False))
         return
 
+    print(f"Language: {a['name']}  ·  unit: {unit}  ·  rate in {rate_label}"
+          + (f"  ({a['bands']})" if a["bands"] else ""))
     for x in results:
         print("─" * 64)
-        print(f"#{x['id']}  {x['words']} words   fillers: {x['fillers']}"
+        if not x["in_target"]:
+            snippet = x["text"][:50] + ("…" if len(x["text"]) > 50 else "")
+            print(f"#{x['id']}  [not {a['name']} — skipped]  “{snippet}”")
+            continue
+        print(f"#{x['id']}  {x['units']} {unit}   fillers: {x['fillers']}"
               + (f"  {x['filler_breakdown']}" if x["filler_breakdown"] else ""))
         if x.get("audio"):
             print(f"  duration {x['duration_s']}s  (lead {x['lead_silence_s']}s, "
                   f"trail {x['trail_silence_s']}s)   phonation {int(x['phonation_ratio']*100)}%")
-            print(f"  speech rate {x['speech_rate_wpm']} wpm   "
-                  f"articulation {x['articulation_rate_wpm']} wpm")
+            print(f"  speech rate {x['speech_rate']} {rate_label}   "
+                  f"articulation {x['articulation_rate']} {rate_label}")
             print(f"  pauses {x['n_pauses']}  total {x['pause_total_s']}s  "
                   f"(mean {x['mean_pause_s']}s, longest {x['longest_pause_s']}s)")
-            print(f"  mean length of run: {x['mean_run_words']} words / unbroken stretch")
+            print(f"  mean length of run: {x['mean_run']} {unit} / unbroken stretch")
         else:
             print("  [no audio recording found — text metrics only]")
+        if x["reading"]:
+            print(f"  reading: {x['reading'][:70]}")
         snippet = x["text"][:160] + ("…" if len(x["text"]) > 160 else "")
         print(f"  “{snippet}”")
     print("─" * 64)
-    if len(results) > 1 and all(r.get("audio") for r in results):
-        print("FLOW TREND (across takes — want rate ↑, pauses ↓, runs ↑):")
-        for x in results:
-            print(f"  #{x['id']}: {x['speech_rate_wpm']:>5} wpm | "
-                  f"{x['n_pauses']:>2} pauses | {x['mean_run_words']:>4} words/run")
+    scored = [x for x in results if x["in_target"] and x.get("audio")]
+    if len(scored) > 1:
+        print(f"FLOW TREND (across takes — want rate ↑, pauses ↓, runs ↑):")
+        for x in scored:
+            print(f"  #{x['id']}: {x['speech_rate']:>5} {rate_label} | "
+                  f"{x['n_pauses']:>2} pauses | {x['mean_run']:>4} {unit}/run")
 
 
 if __name__ == "__main__":
