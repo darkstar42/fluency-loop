@@ -111,12 +111,14 @@ actually predict perceived fluency.
 - `ffmpeg` / `ffprobe` — `brew install ffmpeg`
 - Python 3.12
 
-**One-time install:**
+**One-time install** — you don't have to run this yourself: the first time you
+want spoken feedback, Claude checks for the prerequisites and offers to run it for
+you. To do it by hand:
 ```bash
 scripts/setup.sh          # creates scripts/.venv and installs dependencies
 ```
-The first run of the pronunciation tools downloads the Allosaurus model once,
-then everything works offline.
+This downloads PyTorch and (on first analysis) the Allosaurus model — a few
+hundred MB, a few minutes — then everything works offline.
 
 **Run it** (the teacher does this for you each session, but you can too):
 ```bash

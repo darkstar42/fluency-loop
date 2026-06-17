@@ -138,8 +138,16 @@ scripts/analyze.sh --ids 805,806,807
 
 It reads Handy's `history.db` and the matching `.wav` recordings from
 `~/Library/Application Support/com.pais.handy/` (macOS), and picks the language
-from `config.json`. See `README.md` for one-time setup (Python venv + ffmpeg) and
-what each script reports.
+from `config.json`. See `README.md` for what each script reports.
+
+**First-time setup (you handle this for the user).** Before running the analyzer
+the first time, check whether `scripts/.venv` exists. If it doesn't, the deps
+aren't installed yet — tell the user it's a one-time install (downloads PyTorch +
+the Allosaurus model, a few hundred MB / a few minutes, and needs `ffmpeg` and
+Python 3.12 on PATH), and **offer to run `scripts/setup.sh` for them**. Don't run
+it unprompted at session start — only when spoken analysis is first needed or the
+user asks, so the long install never surprises them. If `ffmpeg` is missing, point
+them to `brew install ffmpeg` first.
 
 > If only ~5 takes are ever available, the user likely hasn't raised Handy's
 > history limit (default 5). Point them to the README setup step to increase it.
