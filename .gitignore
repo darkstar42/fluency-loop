@@ -5,5 +5,8 @@ scripts/.venv/
 __pycache__/
 *.pyc
 
+# lesson server runtime PID
+.server.pid
+
 # macOS
 .DS_Store

@@ -83,8 +83,15 @@ Lessons can be *submitted*, not just read. `scripts/serve.py` is a tiny local
 server (stdlib only — no venv) that serves the repo and captures answers:
 
 ```
-python3 scripts/serve.py --open lessons/0001-x.html
+python3 scripts/serve.py --open lessons/0001-x.html --stop-when-orphaned
 ```
+
+Start it as a **background** command so it doesn't block the session. It stops
+automatically when the Claude Code session ends (the `SessionEnd` hook in
+`.claude/settings.json` runs `scripts/stop-server.sh`, which kills the PID in
+`.server.pid`); `--stop-when-orphaned` is a backup that also exits the server if
+the launching process dies (e.g. the terminal is closed). So you never leave a
+stray server running.
 
 The user does the lesson in the browser, hits **Submit**, and their answers land
 in `submissions/<lesson>__<timestamp>.json`. The server never grades — **you do**,

@@ -20,18 +20,27 @@ Stdlib only — no venv needed.
   python3 scripts/serve.py                          # serve, print the URL
   python3 scripts/serve.py --open lessons/0001-x.html   # also open it in a browser
   python3 scripts/serve.py --port 9000
+  python3 scripts/serve.py --stop-when-orphaned     # exit if the launching process dies
+
+Lifecycle: it writes its PID to .server.pid; the SessionEnd hook in
+.claude/settings.json stops it when the Claude Code session ends. --stop-when-orphaned
+is a backup that exits if the parent process goes away (e.g. the terminal closes).
 """
 import argparse
+import atexit
 import datetime
 import http.server
 import json
 import os
 import re
 import socketserver
+import threading
+import time
 import webbrowser
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUBMISSIONS = os.path.join(ROOT, "submissions")
+PIDFILE = os.path.join(ROOT, ".server.pid")
 
 
 def _safe(name):
@@ -74,11 +83,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+def _watch_parent(httpd):
+    """Shut down if the launching process disappears (getppid reparents to 1)."""
+    start_ppid = os.getppid()
+    if start_ppid <= 1:
+        return  # already orphaned/daemonized — can't track a parent
+    while True:
+        time.sleep(2)
+        if os.getppid() != start_ppid:
+            print("\nlaunching process exited — stopping server.")
+            httpd.shutdown()
+            return
+
+
 def main():
     ap = argparse.ArgumentParser(description="Local lesson server (serve + capture submissions)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--open", dest="open_path", help="relative path of a lesson to open in the browser")
+    ap.add_argument("--stop-when-orphaned", action="store_true",
+                    help="exit if the process that launched it dies")
     args = ap.parse_args()
+
+    with open(PIDFILE, "w") as f:
+        f.write(str(os.getpid()))
+    atexit.register(lambda: os.path.exists(PIDFILE) and os.remove(PIDFILE))
 
     url = f"http://127.0.0.1:{args.port}"
     with socketserver.ThreadingTCPServer(("127.0.0.1", args.port), Handler) as httpd:
@@ -88,6 +116,8 @@ def main():
         print("  Ctrl-C to stop.\n")
         if args.open_path:
             webbrowser.open(f"{url}/{args.open_path.lstrip('/')}")
+        if args.stop_when_orphaned:
+            threading.Thread(target=_watch_parent, args=(httpd,), daemon=True).start()
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
