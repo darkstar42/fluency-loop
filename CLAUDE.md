@@ -108,6 +108,31 @@ to get right. (You still read the real takes from Handy's history DB for audio
 analysis; the boxes are the on-page surface so dictation isn't lost and so answers
 can be submitted.)
 
+**Every timed round needs a visible countdown.** The fluency method leans on timed
+speaking (e.g. 4/3/2 — the same talk in 4, then 3, then 2 minutes), so the user
+must be able to see when time is up without watching a separate clock. Add a
+`<span class="timer" data-seconds="N">` next to each timed round and embed this
+block once — a self-contained countdown with a start/pause button and a beep at
+zero (no external files, so it still works offline and prints fine):
+
+```html
+<style>.timer.done{color:#b2483a;font-weight:600}</style>
+<script>
+(function(){
+ function beep(){try{var c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;o.start();g.gain.setValueAtTime(.2,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4);o.stop(c.currentTime+.4);}catch(e){}}
+ function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+ document.querySelectorAll('.timer').forEach(function(el){
+  var total=+el.getAttribute('data-seconds')||120,left=total,id=null;
+  var b=document.createElement('button');b.type='button';var t=document.createElement('span');el.append(b,t);
+  function render(){t.textContent=' '+fmt(left);b.textContent=id?'⏸':'▶ '+fmt(total);}
+  function tick(){left--;if(left<=0){clearInterval(id);id=null;el.classList.add('done');t.textContent=' Time!';beep();return;}render();}
+  b.addEventListener('click',function(){if(id){clearInterval(id);id=null;render();return;}if(left<=0){left=total;el.classList.remove('done');}id=setInterval(tick,1000);tick();});
+  render();
+ });
+})();
+</script>
+```
+
 **Make the lesson submittable.** Those same `<textarea>` boxes are the answer
 fields: give each one a `data-qid` (and `data-prompt`), set `data-lesson` on
 `<html>`, and embed this block once (it no-ops when opened from `file://`, so the
@@ -195,6 +220,6 @@ none are committed.
   and `reference/` updated per the format docs in `.claude/skills/teach/`.
 - Lessons are self-contained, beautiful, printable HTML in `lessons/`, with a
   focusable `<textarea>` for every speaking round (Handy pastes into the focused
-  field), made submittable (the submit block + `data-qid` fields) and a
-  `*.rubric.json` beside them.
+  field), a countdown `timer` for every timed round, made submittable (the submit
+  block + `data-qid` fields) and a `*.rubric.json` beside them.
 - Numbered files (`learning-records/`, `lessons/`) increment: `0001-`, `0002-`, …
