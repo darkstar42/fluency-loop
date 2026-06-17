@@ -1,0 +1,9 @@
+# Python virtualenv for the analyzer (rebuild with scripts/setup.sh)
+scripts/.venv/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
