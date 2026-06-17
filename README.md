@@ -6,11 +6,30 @@ speak the language, then builds short, beautiful, printable lessons grounded in
 that goal — and measures your real spontaneous speech with a fully offline audio
 analyzer. Speak → measure → lesson → repeat: the fluency loop.
 
-This is a **blank starter you make your own**: clone it, run the onboarding, pick
+This is a **blank starter you make your own**: on GitHub, click **Use this
+template** to create your own private copy (or clone it), run the onboarding, pick
 your language, and your first session builds everything from your own mission. No
 lessons or learner data ship with it.
 
 ---
+
+## Why this exists
+
+You can understand a language well — read it, follow a podcast, get the gist of a
+fast conversation — and still freeze the moment it's your turn to *speak*. Under
+real-time pressure the sentence you meant to say falls apart: you hesitate,
+restart, reach for your native-language phrasing. Lessons help (conversation
+practice on something like [italki](https://www.italki.com) is invaluable), but
+they happen once or twice a week, and most of the feedback is gone the moment it's
+spoken.
+
+This project came out of wanting something to close that gap: a coach that listens
+to the speech you *actually* produce — not only in drills, but in the everyday
+dictation you do anyway — and gives objective, low-stakes feedback on how you're
+really doing. Are your sentences getting longer? Fewer freezes and restarts? Is a
+sound starting to drift? The point is to turn the time *between* lessons into
+practice too, and to make producing speech feel less like a test. It's built to
+sit **alongside** real conversation practice, not replace it.
 
 ## How it works
 
@@ -50,6 +69,9 @@ errors that matter for that language. Add a new one by modeling it on these.
 
 ## Quick start
 
+0. **Get your own copy.** On GitHub, click **Use this template → Create a new
+   repository** (make it **private** — your lessons and notes will live in it).
+   Then clone your copy locally.
 1. **Open this folder in Claude Code.**
 2. **Run the teacher:**
    ```
