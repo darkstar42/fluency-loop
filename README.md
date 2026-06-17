@@ -1,4 +1,4 @@
-# AI Language Fluency Loop
+# Fluency Loop
 
 An AI speaking coach that runs in [Claude Code](https://claude.com/claude-code),
 for **any language you're learning**. It interviews you about *why* you want to
