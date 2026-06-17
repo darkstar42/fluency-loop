@@ -25,14 +25,18 @@ LANGARG=(); [ -n "$TARGET" ] && LANGARG=(--lang "$TARGET")
 echo "════════════════ FLUENCY (speed · pauses · runs) ════════════════"
 "$PY" "$DIR/fluency.py" "${LANGARG[@]}" "$@" 2>&1 | grep -vE "$NOISE" || true
 
-if [ -z "$TARGET" ] || [ "$TARGET" = "en" ]; then
+if [ "$TARGET" = "ja" ]; then
   echo
-  echo "═══════════ DISFLUENCY · PROSODY · RAW PHONES ═══════════"
+  echo "════════ PRONUNCIATION — Japanese (長音 · ら行 · ふ · 促音 · prosody) ════════"
+  "$PY" "$DIR/pron_align_ja.py" "$@" 2>&1 | grep -vE "$NOISE" || true
+elif [ -z "$TARGET" ] || [ "$TARGET" = "en" ]; then
+  echo
+  echo "═══════════ DISFLUENCY · PROSODY · RAW PHONES (English) ═══════════"
   "$PY" "$DIR/probe.py" "$@" 2>&1 | grep -vE "$NOISE" || true
   echo
-  echo "════════════ PRONUNCIATION ALIGNMENT (German tells) ════════════"
+  echo "════════════ PRONUNCIATION ALIGNMENT (English ← German tells) ════════════"
   "$PY" "$DIR/pron_align.py" "$@" 2>&1 | grep -vE "$NOISE" || true
 else
   echo
-  echo "(pronunciation probes are the English/German reference module — skipped for '$TARGET'; fluency above is language-neutral)"
+  echo "(no pronunciation module for '$TARGET' yet — fluency above is language-neutral)"
 fi

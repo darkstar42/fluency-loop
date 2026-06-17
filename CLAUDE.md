@@ -146,11 +146,20 @@ what each script reports.
 
 **Fluency** (`fluency.py`) works for every language — the audio metrics are
 language-neutral and only the counting unit changes (words / morae / …, via
-`scripts/lang.py`). **Pronunciation** (`probe.py`, `pron_align.py`) is the
-**English-from-German** reference module: it runs only when `target_language` is
-`en`, and its transfer flags assume a German L1 (`GER_TARGETS` in those scripts).
-To support another target language or L1, add an adapter in `lang.py` and/or a
-pronunciation module modeled on the English one.
+`scripts/lang.py`). **Pronunciation** ships per language and `analyze.sh` picks
+the right one from `config.json`:
+- `target=en` → `probe.py` + `pron_align.py` (English; transfer flags assume a
+  German L1, `GER_TARGETS`).
+- `target=ja` → `pron_align_ja.py` (Japanese: 長音 long vowels, ら-row flap, ふ /ɸ/,
+  促音 geminates, plus descriptive pitch/prosody — true pitch-accent grading would
+  need an accent dictionary, which isn't bundled).
+- other → fluency only.
+
+Both pronunciation modules compare expected phones (CMUdict for English, a
+kana→IPA rule table for Japanese) against what Allosaurus actually heard. Add a new
+language by writing an adapter in `lang.py` and, optionally, a pronunciation module
+modeled on these. All dictionaries/models download into the venv on first use —
+none are committed.
 
 ## Conventions
 

@@ -37,15 +37,16 @@ are markdown at the repo root, and the analyzer never sends audio anywhere.
 
 | Language | Fluency metrics | Pronunciation feedback |
 |---|---|---|
-| **English** | ✅ words | ✅ (assumes a German L1 — the reference module) |
-| **Japanese** | ✅ morae | — fluency only |
+| **English** | ✅ words | ✅ th, w/v, ŋ, æ, final-devoicing (assumes a German L1) |
+| **Japanese** | ✅ morae | ✅ 長音 long vowels, ら行 flap, ふ /ɸ/, 促音 geminate, pitch/prosody |
 | **Any other** (`generic`) | ✅ whitespace words | — fluency only |
 
 **Fluency works for every language** — the audio metrics (pauses, phonation,
 length of runs) are language-neutral; only the counting unit changes. Adding a
 new language is a small adapter in [`scripts/lang.py`](scripts/lang.py).
-**Pronunciation** is currently an English-from-German reference module; other
-language pairs can be added by modeling new modules on it.
+**Pronunciation** ships for English (← German) and Japanese; each is a module that
+compares expected phones to what Allosaurus actually heard and flags the transfer
+errors that matter for that language. Add a new one by modeling it on these.
 
 ## Quick start
 
@@ -105,7 +106,8 @@ scripts/analyze.sh --ids 121,122,123   # specific takes
 | `fluency.py` | units (words/morae), fillers, duration, **phonation ratio**, **speech rate**, pause count/length, **mean length of run** — plus a flow-trend table across takes. Works for any language. |
 | `probe.py` | disfluency typing, **prosody** (pitch range / monotone via Praat), raw phone recognition. *English module* (prosody is language-neutral and a candidate to generalize). |
 | `pron_align.py` | expected (CMUdict) vs. actual (Allosaurus) phones aligned → **L1-transfer flags**. *English-from-German module.* |
-| `analyze.sh` | the standing per-session command — runs fluency for your language, plus the pronunciation probes when the target is English. |
+| `pron_align_ja.py` | expected (kana→IPA) vs. actual (Allosaurus) phones aligned → **Japanese tells**: long vowels, ら-row flap, ふ, geminates, prosody. |
+| `analyze.sh` | the standing per-session command — runs fluency for your language, plus the matching pronunciation module (English or Japanese). |
 
 ### Adding a language or pronunciation module
 - **New fluency language:** add an adapter to `scripts/lang.py` — a unit counter,
