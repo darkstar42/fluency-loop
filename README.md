@@ -6,6 +6,11 @@ speak the language, then builds short, beautiful, printable lessons grounded in
 that goal — and measures your real spontaneous speech with a fully offline audio
 analyzer. Speak → measure → lesson → repeat: the fluency loop.
 
+**Requirements:** [Claude Code](https://claude.com/claude-code) and the free
+[Handy](https://github.com/cjpais/Handy) speech-to-text app (macOS) — you speak
+your answers into Handy, and the analyzer reads its recordings. Setup details are
+below.
+
 This is a **blank starter you make your own**: on GitHub, click **Use this
 template** to create your own private copy (or clone it), run the onboarding, pick
 your language, and your first session builds everything from your own mission. No
