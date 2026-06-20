@@ -166,7 +166,8 @@ python3 scripts/serve.py --open lessons/0001-your-lesson.html
 ```
 
 Do the lesson in your browser, hit **Submit**, and your answers are saved to
-`submissions/`. Then back in Claude Code say *"grade the latest submission"* — the
+`submissions/`. Then back in Claude Code type **`/grade`** (or just say *"grade the
+latest submission"*) — the
 teacher evaluates your answers against the lesson's rubric, with full context
 (your mission, your past takes, your learning records), gives feedback, and
 updates your records. Because you dictate answers with Handy, one submitted lesson
@@ -186,7 +187,7 @@ NOTES.md            Teacher's scratchpad + where to resume (start empty)
 learning-records/   Decision-grade insights about your progress (ADR-style)
 lessons/            Your lessons — self-contained printable HTML (+ *.rubric.json)
 submissions/        Answers you submit from a lesson (graded ones move to graded/)
-reference/          Cheat-sheets distilled from lessons
+reference/          Cheat-sheets distilled from lessons (+ review-schedule.json, the spaced-repetition memory)
 scripts/            The offline analyzer (lang.py = language adapters), serve.py + setup
 .claude/skills/teach/   The teaching method (the /teach skill), bundled in
 ```
