@@ -59,6 +59,16 @@ takes (`scripts/analyze.sh --last 10`) and record the highest id you saw.
 
 5. Check `submissions/` for any ungraded lesson submissions and grade them (see
    "Interactive lessons" below) before deciding what to teach next.
+6. **Check the SRS review schedule** (`reference/review-schedule.json`). Read it and
+   find every topic whose `next_due` is on or before today — those are *due for a
+   spaced rep*. Weave a **small** dose of the most overdue / most mission-relevant 1–2
+   into the next lesson (a warm-up line, a drill item, a reused phrase) — a rep, not a
+   re-teach. After a topic is reinforced (it showed up in a graded round, or you drilled
+   it), advance it along the `interval_ladder_days` and update `last_seen` / `next_due`;
+   if the learner clearly still struggles, reset its `interval_days` to 1. The file's
+   `_doc` has the full rules. This is the workspace's spaced-repetition memory — it's
+   what makes old topics resurface on a schedule instead of being forgotten. (The file
+   ships with an empty `topics` list; seed entries as you teach.)
 
 ## The practice loop
 

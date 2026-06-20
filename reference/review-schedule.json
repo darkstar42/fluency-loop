@@ -1,0 +1,15 @@
+{
+  "_doc": "Spaced-repetition tracker for taught topics — the SRS memory of the workspace, so old topics resurface on a schedule instead of only by the agent's session memory. HOW IT WORKS: at the start of every session (after the analyzer sweep), read this file and find every topic whose `next_due` <= today. Those are DUE — weave a SMALL rep of each into the next lesson (a warm-up line, a drill item, a reused phrase) — a rep, NOT a re-teach. After a topic is reinforced (it appeared in a graded submission, or you deliberately drilled it), advance it: bump `interval_days` to the next step in `interval_ladder_days`, set `last_seen` = today, set `next_due` = today + new interval. If the learner clearly STILL struggles with it (rubric/audio shows the gap), do NOT advance — reset `interval_days` to 1 (relearn) and keep it due. Keep doses small and few per lesson — don't dump every due topic at once; prioritize the most overdue / most mission-relevant 1-2 (too much variety at once is itself choice-stress). Dates are ISO YYYY-MM-DD. `taught` = the lesson id that introduced the topic (or 'backlog' for a recurring thread not yet given a dedicated lesson). `topics` starts empty — seed an entry as you teach each one, following the example shape below.",
+  "today_was_at_last_update": null,
+  "interval_ladder_days": [1, 3, 7, 14, 30, 60],
+  "_example_topic": {
+    "id": "short-stable-slug",
+    "label": "human-readable name of the thing being drilled",
+    "taught": "0001",
+    "last_seen": "2026-01-01",
+    "interval_days": 3,
+    "next_due": "2026-01-04",
+    "notes": "how it's going + how to rep it (phrasing, not re-teach)"
+  },
+  "topics": []
+}
