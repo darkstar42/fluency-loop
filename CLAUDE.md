@@ -259,3 +259,14 @@ none are committed.
   field), a countdown `timer` for every timed round, made submittable (the submit
   block + `data-qid` fields) and a `*.rubric.json` beside them.
 - Numbered files (`learning-records/`, `lessons/`) increment: `0001-`, `0002-`, …
+- **Persist everything in the repo — never in machine-local agent memory.** Durable
+  preferences, decisions, and learner facts go in the tracked files above (teaching
+  preferences in `NOTES.md`, the agent guide here) so they're shared and every user /
+  agent benefits. Do NOT save them to Claude Code's per-machine persistent memory —
+  that's invisible to collaborators.
+- **Build lessons from sources, not from memory.** For any grammar / usage / nuance
+  claim, web-search reputable sources for the target language to confirm it, and cite
+  the source(s) in the lesson footer. (For Japanese, e.g. Tofugu, Coto Academy, Maggie
+  Sensei, Imabi, *A Dictionary of Basic/Intermediate Japanese Grammar*, jisho / Weblio;
+  pick the equivalent authorities for whatever language is being taught.) Backlog notes
+  in `NOTES.md` are a recall list to confirm, not authority to copy.
