@@ -160,7 +160,7 @@ b.addEventListener('click',async function(){
  b.disabled=true;s.textContent='Submitting…';
  try{var r=await fetch('/submit',{method:'POST',headers:{'Content-Type':'application/json'},
   body:JSON.stringify({lesson:document.documentElement.getAttribute('data-lesson')||document.title,answers:ans})});
-  var j=await r.json();s.textContent=j.ok?'Submitted ✓ — switch to Claude Code and say "grade the latest submission".':'Submit failed.';
+  var j=await r.json();s.textContent=j.ok?'Submitted ✓ — switch to Claude Code and type /grade.':'Submit failed.';
  }catch(e){s.textContent='Submit failed: '+e;b.disabled=false;}});})();
 </script>
 ```
@@ -174,10 +174,11 @@ Grade against it so feedback is grounded, not vibes:
   { "qid": "q1", "expected": "…", "accept": ["…"], "criteria": "what a good answer shows" } ] }
 ```
 
-**Grading flow.** When the user asks to grade (or during the session-start sweep),
-read the newest ungraded file(s) in `submissions/`, compare each answer to the
-rubric, give targeted encouraging feedback, update `learning-records/` where a
-real insight emerges, then move the file to `submissions/graded/`. The dictation
+**Grading flow.** When the user asks to grade — or types the `/grade` command
+(`.claude/commands/grade.md`), or during the session-start sweep — read the newest
+ungraded file(s) in `submissions/`, compare each answer to the rubric, give targeted
+encouraging feedback, update `learning-records/` where a real insight emerges, then
+move the file to `submissions/graded/`. The dictation
 boxes still feed Handy, so a submitted lesson gives you BOTH the written answers
 (graded vs. rubric) and the audio (fluency metrics) from one action.
 
