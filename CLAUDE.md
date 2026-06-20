@@ -111,12 +111,37 @@ back here in Claude Code, with full context.
 optional.** Handy pastes its transcription into whatever field is *focused* on the
 page, so a lesson that asks the user to speak must give them somewhere for the text
 to land. For each take / round / answer, include a labeled, focusable
-`<textarea>` (one per round — e.g. "Round 1 (4 min)", "Round 2 (3 min)"). A live
-word count and a clear button are nice touches. Without these boxes the speaking
-instructions have nowhere to go and the lesson doesn't work — this is the #1 thing
-to get right. (You still read the real takes from Handy's history DB for audio
-analysis; the boxes are the on-page surface so dictation isn't lost and so answers
-can be submitted.)
+`<textarea>` (one per round — e.g. "Round 1 (4 min)", "Round 2 (3 min)"). Without
+these boxes the speaking instructions have nowhere to go and the lesson doesn't
+work — this is the #1 thing to get right. (You still read the real takes from
+Handy's history DB for audio analysis; the boxes are the on-page surface so
+dictation isn't lost and so answers can be submitted.)
+
+A live word count and a clear button are worth adding to each box — the count is a
+gentle "did anything land" signal and clear re-focuses the box for the next take
+(handy since Handy pastes into the focused field). Put a `.meta` row beside each
+`<textarea>` and embed this block once; it's wired to the same `data-qid` the submit
+block uses, so no extra bookkeeping:
+
+```html
+<div class="meta"><span class="wc">0 words</span><button type="button" class="clear" data-clear="r1">clear</button></div>
+<script>
+(function(){
+ document.querySelectorAll('textarea[data-qid]').forEach(function(t){
+  var wc=t.parentElement.querySelector('.wc');
+  if(wc){var upd=function(){var n=t.value.trim()?t.value.trim().split(/\s+/).length:0;wc.textContent=n+(n===1?' word':' words');};t.addEventListener('input',upd);upd();}
+ });
+ document.querySelectorAll('[data-clear]').forEach(function(btn){
+  btn.addEventListener('click',function(){var id=btn.getAttribute('data-clear');
+   var t=document.querySelector('textarea[data-qid="'+id+'"]');t.value='';t.dispatchEvent(new Event('input'));t.focus();});
+ });
+})();
+</script>
+```
+
+(The count splits on whitespace, so for languages that don't word-space, e.g.
+Japanese, treat it as a rough "is anything here" indicator rather than a true unit
+count — the analyzer is the source of truth for morae/word totals.)
 
 **Every timed round needs a visible countdown.** The fluency method leans on timed
 speaking (e.g. 4/3/2 — the same talk in 4, then 3, then 2 minutes), so the user
